@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * RUNDE 1 — her begynner du.  Se 4-Frontend/oppgave.md, oppgave 1.
@@ -31,21 +31,57 @@ import { useEffect, useState } from "react";
  */
 
 export type ConnectionState = "connecting" | "open" | "closed";
+const EVENT_NAMES = ["order.created", "order.status-changed", "message"] as const;
 
 export function useEventSource(
   url: string,
   onEvent: (event: MessageEvent) => void,
 ): ConnectionState {
-  const [state] = useState<ConnectionState>("closed");
+  const [state, setState] = useState<ConnectionState>("connecting");
+
+  const handlerRef = useRef(onEvent);
+  useEffect(() => {
+    handlerRef.current = onEvent;
+  }, [onEvent]);
+
+  // useEffect(() => {
+  //   // TODO (runde 1): opprett en EventSource mot `url`, kall `onEvent` for hver
+  //   //                 hendelse, og lukk forbindelsen når komponenten forsvinner.
+  //   //                 Sett `state` til "open" når forbindelsen er oppe, slik at
+  //   //                 indikatoren øverst til høyre slår om til «live».
+  //   const source = new EventSource(url);
+
+
+  //   void url;
+  //   void onEvent;
+  // }, [url, onEvent]);
 
   useEffect(() => {
-    // TODO (runde 1): opprett en EventSource mot `url`, kall `onEvent` for hver
-    //                 hendelse, og lukk forbindelsen når komponenten forsvinner.
-    //                 Sett `state` til "open" når forbindelsen er oppe, slik at
-    //                 indikatoren øverst til høyre slår om til «live».
-    void url;
-    void onEvent;
-  }, [url, onEvent]);
+
+    // url som lyttes på
+    const source = new EventSource(url);
+
+    // lytteren
+    const listener = (event: MessageEvent) => handlerRef.current(event);
+
+    // hva vi lytter på
+    source.addEventListener("open", () => setState("open"));
+    source.addEventListener("ready", () => setState("open"));
+
+    // lytter etter kjente hendelser
+    for (const name of EVENT_NAMES) {
+      source.addEventListener(name, listener);
+    }
+
+    source.addEventListener("error", () => {
+      setState(source.readyState === EventSource.CLOSED ? "closed" : "connecting");
+    });
+
+    return () => {
+      source.close();
+      setState("closed");
+    };
+  }, [url])
 
   return state;
 }

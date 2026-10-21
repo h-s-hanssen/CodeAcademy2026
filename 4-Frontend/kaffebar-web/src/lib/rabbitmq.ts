@@ -96,18 +96,22 @@ export async function subscribeToOrders(
   //                       typen "topic". Den finnes allerede, for API-et laget den
   //                       da det startet, men assertExchange er idempotent, så det
   //                       spiller ingen rolle hvem som er først.
+  await channel.assertExchange(RABBITMQ_EXCHANGE, "topic", { durable: true });
   //
   //   2. assertQueue      Tomt kønavn, så finner broker på et selv. Du vil ha
   //                       { exclusive: true, autoDelete: true }: køen er din alene
   //                       og forsvinner når du kobler fra. Alle som ser på skjermen
   //                       skal få alle hendelsene, så dette er en kringkasting, ikke
   //                       en arbeidskø.
-  //
+  const queue = await channel.assertQueue("", { exclusive: true, autoDelete: true });
+
   //   3. bindQueue        Bind køen din til exchangen med en routing key som fanger
   //                       "order.created" og "order.status-changed". `order.*`
   //                       matcher ett ledd, `order.#` matcher null eller flere.
   //                       Punktum skiller leddene i AMQP, ikke bindestrek.
-  //
+  await channel.bindQueue(queue.queue, RABBITMQ_EXCHANGE, "order.#");
+
+
   //   4. consume          Meldingen kan være null, så sjekk den først. Innholdet er
   //                       JSON i `message.content`, og skal tolkes og sendes videre
   //                       til `onEvent`. Bruk { noAck: true }: et UI som mister en
@@ -115,28 +119,41 @@ export async function subscribeToOrders(
   //                       uansett hele lista på nytt.
   //                       Ta vare på `consumerTag` fra svaret, så opprydningen
   //                       nedenfor kan avslutte abonnementet.
-  //
+
+  const consumer = await channel.consume(
+    queue.queue,
+    (message) => {
+      if (!message) return;
+      try {
+        onEvent(JSON.parse(message.content.toString()) as KaffebarEvent);
+      } catch (error) {
+        console.error("Feil ved behandling av melding:", error);
+      }
+    },
+    { noAck: true }
+  );
+
   // Står du fast: `rabbitmq-solution.ts` i samme mappe.
   // ---------------------------------------------------------------------------
   // Vakten under holder kompilatoren i ro, og sier samtidig fra så lenge oppgaven
   // ikke er løst. Uten den ville route handleren meldt «klar» til nettleseren selv
   // om ingen hendelser kunne komme, og indikatoren hadde stått på «Live» og løyet.
   // Den forsvinner av seg selv når du setter `consumerTag` i consume-kallet.
-  void RABBITMQ_EXCHANGE;
-  void onEvent;
+  // void RABBITMQ_EXCHANGE;
+  // void onEvent;
 
-  if (!consumerTag) {
+  if (!consumer.consumerTag) {
     await channel.close();
     throw new Error(
       "Abonnementet i src/lib/rabbitmq.ts er ikke skrevet ferdig: consumerTag er ikke satt. " +
-        "Se oppgave 2 i 4-Frontend/oppgave.md.",
+      "Se oppgave 2 i 4-Frontend/oppgave.md.",
     );
   }
 
   return {
     close: async () => {
       try {
-        if (consumerTag) await channel.cancel(consumerTag);
+        if (consumerTag) await channel.cancel(consumer.consumerTag);
         // Bare kanalen lukkes. Tilkoblingen er delt og lever videre.
         await channel.close();
       } catch {

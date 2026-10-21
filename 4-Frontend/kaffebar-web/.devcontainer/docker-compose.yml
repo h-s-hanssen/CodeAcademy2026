@@ -1,0 +1,29 @@
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/javascript-node:1-24-bookworm
+    working_dir: /workspaces/kaffebar-web
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/kaffebar-web:cached
+      - node_modules:/workspaces/kaffebar-web/node_modules
+      - yarn_cache:/home/node/.yarn/berry
+    environment:
+      NEXT_TELEMETRY_DISABLED: "1"
+      USE_MOCK_API: "true"
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - rabbitmq
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+volumes:
+  node_modules:
+  yarn_cache:
+  rabbitmq_data:

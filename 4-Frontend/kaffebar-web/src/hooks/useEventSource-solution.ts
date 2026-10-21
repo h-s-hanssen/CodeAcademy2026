@@ -47,7 +47,7 @@ export function useEventSource(
       source.close();
       setState("closed");
     };
-  }, [url]);
+  }, [url])
 
   return state;
 }
