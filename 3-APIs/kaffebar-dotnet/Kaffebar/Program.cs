@@ -7,6 +7,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+var users = new[]
+{
+    new User(Guid.Parse("1e6d4562-9eaf-4ec3-8613-6f15afb92bd9"), "Ada Lovelace", true),
+    new User(Guid.Parse("4563d1f1-2db5-4e80-b302-790b5d8c7e93"), "Alan Turing", false),
+    new User(Guid.Parse("6b59c42b-4bf4-47b9-b28c-b2a3a95e91ef"), "Grace Hopper", true)
+};
 
 if (app.Environment.IsDevelopment())
 {
@@ -31,8 +37,18 @@ app.MapGet("/menu", () => new[]
 .WithSummary("Hent kaffemeny")
 .WithDescription("Returnerer en liste over alle tilgjengelige kaffedrikker i kaffebaren.");
 
+app.MapGet("/users/active", () => users.Where(user => user.Active))
+    .WithName("GetActiveUsers")
+    .WithSummary("Hent aktive brukere")
+    .WithDescription("Returnerer alle brukere som er aktive.")
+    .Produces<IEnumerable<User>>();
+
 app.Run();
 
 // DTO-er kan ligge i Program.cs når prosjektet er lite.
 // Etter hvert er det ryddig å flytte dem til egne filer i en Models-mappe.
 public record Coffee(Guid Id, string Name, decimal Price);
+
+public record User(Guid Id, string Name, bool Active);
+
+public partial class Program;
