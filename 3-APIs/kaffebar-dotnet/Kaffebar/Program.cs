@@ -1,4 +1,5 @@
 using Scalar.AspNetCore;
+using Kaffebar.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,11 +29,7 @@ app.MapGet("/menu", () => new[]
     new Coffee(Guid.NewGuid(), "Espresso", 35.00m)
 })
 .WithName("GetMenu")
-.WithSummary("Hent kaffemeny")
-.WithDescription("Returnerer en liste over alle tilgjengelige kaffedrikker i kaffebaren.");
+.WithSummary("Hent hardkoda kaffemeny")
+.WithDescription("Returnerer en liste over alle tilgjengelige kaffedrikker i kaffebarnet vårt.");
 
 app.Run();
-
-// DTO-er kan ligge i Program.cs når prosjektet er lite.
-// Etter hvert er det ryddig å flytte dem til egne filer i en Models-mappe.
-public record Coffee(Guid Id, string Name, decimal Price);
