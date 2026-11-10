@@ -29,6 +29,7 @@ public partial class KaffebarRepository
                 UnitPrice = line.UnitPrice,
                 BeanId = line.BeanId
             });
+            order.TotalPrice += line.Quantity * line.UnitPrice;
         }
 
         db.Orders.Add(order);
@@ -39,8 +40,12 @@ public partial class KaffebarRepository
     /// <summary>Kunden angrer på én av linjene.</summary>
     public async Task RemoveLineAsync(Guid orderId, int lineId)
     {
-        var order = await db.Orders.SingleAsync(o => o.Id == orderId);
-        order.Lines.RemoveAll(l => l.Id == lineId);
+        var order = await db.Orders
+            .Include(o => o.Lines)
+            .SingleAsync(o => o.Id == orderId);
+        var orderLine = order.Lines.SingleOrDefault(l => l.Id == lineId);
+        order.TotalPrice -= orderLine.Quantity * orderLine.UnitPrice;
+        order.Lines.Remove(orderLine);
         await db.SaveChangesAsync();
     }
 }

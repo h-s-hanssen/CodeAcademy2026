@@ -35,7 +35,7 @@ internal static class ContainerRuntime
 
         if (RunningPodmanMachine() is { } podman)
         {
-            TestcontainersSettings.ResourceReaperEnabled = false;
+            TestcontainersSettings.ResourceReaperEnabled = true;
             return podman;
         }
 
