@@ -38,6 +38,7 @@ public static class KaffebarDb
         if (lazyLoading)
         {
             // TODO 1B: skru på lazy loading her.
+            builder.UseLazyLoadingProxies();
         }
 
         return new KaffebarDbContext(builder.Options);

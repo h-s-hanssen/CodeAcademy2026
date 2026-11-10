@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Pipes;
 using System.Net.Sockets;
 using DotNet.Testcontainers.Configurations;
 
@@ -90,7 +91,10 @@ internal static class ContainerRuntime
 
         var description = $"Podman machine «{running}» ({path})";
         if (path.StartsWith(@"\\.\pipe\", StringComparison.OrdinalIgnoreCase))
-            return (new Uri("npipe://./pipe/" + path[@"\\.\pipe\".Length..]), description);
+        {
+            var pipeName = path[@"\\.\pipe\".Length..];
+            return IsPipeListening(pipeName) ? (new Uri("npipe://./pipe/" + pipeName), description) : null;
+        }
 
         return IsListening(path) ? (new Uri($"unix://{path}"), description) : null;
     }
@@ -134,5 +138,35 @@ internal static class ContainerRuntime
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// Podman-maskinen kan rapportere at den kjører før den Docker-kompatible API-pipen
+    /// faktisk tar imot forbindelser (kald oppstart). Vi prøver noen ganger med kort
+    /// mellomrom før vi gir opp og lar Testcontainers falle tilbake til sine standarder,
+    /// i stedet for å returnere en pipe som umiddelbart feiler eller henger.
+    /// </summary>
+    private static bool IsPipeListening(string pipeName, int attempts = 5, int delayMilliseconds = 500)
+    {
+        for (var attempt = 0; attempt < attempts; attempt++)
+        {
+            if (attempt > 0)
+                Thread.Sleep(delayMilliseconds);
+
+            try
+            {
+                using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+                pipe.Connect(1000);
+                return true;
+            }
+            catch (TimeoutException)
+            {
+            }
+            catch (IOException)
+            {
+            }
+        }
+
+        return false;
     }
 }

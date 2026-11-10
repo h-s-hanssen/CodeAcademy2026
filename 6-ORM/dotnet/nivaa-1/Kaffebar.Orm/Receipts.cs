@@ -11,6 +11,17 @@ public static class Receipts
         // For hver linje i ordren, skriv antall, drikk, størrelse, bønnens navn
         // og brenneriets navn: order.Lines → line.Bean → bean.Roastery.Name.
         // Bruk write(...), ikke Console.WriteLine. Da havner det i testresultatet.
-        throw new NotImplementedException("Oppgave 1A: skriv ut kvitteringene");
+        //throw new NotImplementedException("Oppgave 1A: skriv ut kvitteringene");
+
+        foreach (var order in orders)
+        {
+            write($"Kunde: {order.CustomerName}, Status: {order.Status}, Totalpris: {order.TotalPrice}");
+            foreach (var line in order.Lines)
+            {
+                write($"  {line.Quantity} x {line.DrinkName} ({line.Size}), Bønne: {line.Bean.Name}, Brenneri: {line.Bean.Roastery.Name}");
+            }
+        }
+
+
     }
 }
