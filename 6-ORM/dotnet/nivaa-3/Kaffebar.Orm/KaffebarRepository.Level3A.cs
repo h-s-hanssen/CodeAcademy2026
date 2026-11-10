@@ -14,6 +14,18 @@ public partial class KaffebarRepository
         //      kampanjeprisen (15 % rabatt, avrundet til to desimaler).
         //   3. Returner en CampaignReceipt med ordinær pris og kampanjepris.
         // Kjør testene for oppgave 3A. Så begynner den egentlige oppgaven.
-        throw new NotImplementedException("Oppgave 3A");
+        //throw new NotImplementedException("Oppgave 3A");
+
+        return db.Orders
+            .Where(o => o.Id == orderId)
+            .Select(o => new CampaignReceipt
+            (
+                o.Id,
+                o.CustomerName,
+                o.TotalPrice,
+                o.Lines.Any(l => l.Bean.Roastery.Name == Campaign.RoasteryName)
+                    ? Math.Round(o.TotalPrice * (1 - Campaign.Discount), 2)
+                    : o.TotalPrice
+                )).SingleOrDefaultAsync();
     }
 }

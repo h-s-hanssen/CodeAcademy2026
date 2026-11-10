@@ -7,13 +7,21 @@ namespace Kaffebar.Orm;
 public partial class KaffebarRepository
 {
     /// <summary>Alt som har stått Ready siden før <paramref name="cutoff"/> er hentet.</summary>
-    public Task<int> PickUpStaleOrdersAsync(DateTimeOffset cutoff)
+    public async Task<int> PickUpStaleOrdersAsync(DateTimeOffset cutoff)
     {
-        // TODO 3C: skriv den først med en løkke over sporede entiteter, og så med
-        //   ExecuteUpdateAsync. Sammenlign tallene testen skriver ut. Og glem ikke
-        //   statushistorikken: db.Database.ExecuteSqlAsync($"INSERT ... SELECT ...") finnes.
-        //   Tabellen heter status_changes (order_id, status, changed_at), og status lagres som
-        //   tekst med C#-navnet: 'Ready', 'PickedUp'.
-        throw new NotImplementedException("Oppgave 3C");
+        var readyOrders = db.Orders
+            .Where(o => o.Status == OrderStatus.Ready && o.CreatedAt < cutoff);
+
+        // Skriv historikken mens ordrene fortsatt står som Ready i databasen,
+        // ellers matcher ikke predikatet lenger etter ExecuteUpdateAsync.
+        await db.Database.ExecuteSqlAsync(
+            $"""
+             INSERT INTO status_changes (order_id, status, changed_at)
+             SELECT id, 'PickedUp', {DateTimeOffset.UtcNow}
+             FROM orders
+             WHERE status = 'Ready' AND created_at < {cutoff}
+             """);
+
+        return await readyOrders.ExecuteUpdateAsync(o => o.SetProperty(o => o.Status, OrderStatus.PickedUp));
     }
 }

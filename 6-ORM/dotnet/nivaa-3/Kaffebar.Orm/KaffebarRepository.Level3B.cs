@@ -24,7 +24,33 @@ public partial class KaffebarRepository
     /// </summary>
     public async Task<string?> GetOrderJsonAsync(Guid orderId)
     {
-        var order = await db.Orders.SingleOrDefaultAsync(o => o.Id == orderId);
-        return order is null ? null : JsonSerializer.Serialize(order, JsonSerializerOptions.Web);
+        var order = await db.Orders
+            .AsNoTracking()
+            .Include(o => o.Lines)
+            .ThenInclude(l => l.Bean)
+            .ThenInclude(b => b.Roastery)
+            .Include(o => o.StatusHistory)
+            .SingleOrDefaultAsync(o => o.Id == orderId);
+
+        if (order is null)
+            return null;
+
+        var dto = new
+        {
+            id = order.Id,
+            customerName = order.CustomerName,  
+            status = order.Status.ToString(),
+            totalPrice = order.TotalPrice,
+            lines = order.Lines.Select(l => new
+            {
+                bean = l.Bean.Name,
+                roastery = l.Bean.Roastery.Name,
+                quantity = l.Quantity,
+                unitPrice = l.UnitPrice
+            }),
+            statusHistory = order.StatusHistory.Select(h => h.Status.ToString())
+        };
+
+        return JsonSerializer.Serialize(dto, JsonSerializerOptions.Web);
     }
 }
